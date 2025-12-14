@@ -165,6 +165,34 @@ func TestCompositeFilter_GitDirectory(t *testing.T) {
 	}
 }
 
+func TestPatternFilter_IncludeWithDirectories(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Include only .go files (with ** for nested files)
+	filter := NewPatternFilter(tmpDir, []string{"**/*.go"}, nil)
+
+	tests := []struct {
+		name     string
+		path     string
+		isDir    bool
+		expected bool
+	}{
+		{"go file in root", filepath.Join(tmpDir, "main.go"), false, true},
+		{"txt file", filepath.Join(tmpDir, "readme.txt"), false, false},
+		{"directory", filepath.Join(tmpDir, "subdir"), true, true}, // Directories should always be included with include patterns
+		{"nested go file", filepath.Join(tmpDir, "subdir", "file.go"), false, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := filter.ShouldInclude(tt.path, tt.isDir)
+			if got != tt.expected {
+				t.Errorf("ShouldInclude(%q, isDir=%v) = %v, want %v", tt.path, tt.isDir, got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestCompositeFilter_MultipleFilters(t *testing.T) {
 	tmpDir := t.TempDir()
 

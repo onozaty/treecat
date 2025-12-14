@@ -107,6 +107,9 @@ func (f *PatternFilter) ShouldInclude(path string, isDir bool) bool {
 		return true
 	}
 
+	// Convert to forward slashes for pattern matching (doublestar uses /)
+	relPath = filepath.ToSlash(relPath)
+
 	// Check exclude patterns first
 	for _, pattern := range f.excludePatterns {
 		matched, err := doublestar.Match(pattern, relPath)
@@ -117,6 +120,11 @@ func (f *PatternFilter) ShouldInclude(path string, isDir bool) bool {
 
 	// If include patterns are specified, only include files that match
 	if len(f.includePatterns) > 0 {
+		// Always include directories so we can traverse into them
+		if isDir {
+			return true
+		}
+
 		for _, pattern := range f.includePatterns {
 			matched, err := doublestar.Match(pattern, relPath)
 			if err == nil && matched {
