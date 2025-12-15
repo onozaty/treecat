@@ -55,6 +55,9 @@ func Build(entries []scanner.FileEntry) *Node {
 	// Sort all nodes recursively
 	sortNode(root)
 
+	// Prune empty directories (directories without any descendant files)
+	pruneEmptyDirectories(root)
+
 	return root
 }
 
@@ -85,6 +88,52 @@ func sortNode(node *Node) {
 			sortNode(child)
 		}
 	}
+}
+
+// hasDescendantFiles returns true if a directory node has any descendant files.
+// A directory has descendant files if:
+// - It directly contains at least one file (non-directory child)
+// - At least one of its child directories has descendant files
+func hasDescendantFiles(node *Node) bool {
+	if !node.IsDir {
+		return true // Files always count
+	}
+
+	for _, child := range node.Children {
+		if !child.IsDir {
+			return true // Found a file child
+		}
+		if hasDescendantFiles(child) {
+			return true // Found descendant files in child directory
+		}
+	}
+
+	return false // No files found
+}
+
+// pruneEmptyDirectories removes directory nodes that don't contain any descendant files.
+// It recursively processes the tree bottom-up and removes childless directories.
+func pruneEmptyDirectories(node *Node) {
+	if !node.IsDir {
+		return
+	}
+
+	// Process children first (bottom-up traversal)
+	var keptChildren []*Node
+	for _, child := range node.Children {
+		if child.IsDir {
+			pruneEmptyDirectories(child) // Recursive prune
+			// Keep directory only if it has descendant files
+			if hasDescendantFiles(child) {
+				keptChildren = append(keptChildren, child)
+			}
+		} else {
+			// Always keep files
+			keptChildren = append(keptChildren, child)
+		}
+	}
+
+	node.Children = keptChildren
 }
 
 // Render renders the tree structure as a string with box-drawing characters.

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -376,5 +377,79 @@ nested content
 
 	if output != expected {
 		t.Errorf("Output mismatch.\nExpected:\n%s\n\nGot:\n%s", expected, output)
+	}
+}
+
+func TestIntegration_PruneEmptyDirectories(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create directory structure with empty directories
+	os.MkdirAll(filepath.Join(tmpDir, "src"), 0755)
+	os.MkdirAll(filepath.Join(tmpDir, "docs"), 0755) // Empty directory
+	os.MkdirAll(filepath.Join(tmpDir, "tests", "unit"), 0755)
+	os.MkdirAll(filepath.Join(tmpDir, "build"), 0755) // Empty directory
+
+	// Create .go files
+	os.WriteFile(filepath.Join(tmpDir, "src", "main.go"), []byte("package main\n"), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "tests", "unit", "test.go"), []byte("package test\n"), 0644)
+
+	// Create non-.go file in docs (should be filtered out)
+	os.WriteFile(filepath.Join(tmpDir, "docs", "README.md"), []byte("# Docs\n"), 0644)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// Run command with --include "**/*.go" filter
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--include", "**/*.go", tmpDir})
+	err := cmd.Execute()
+
+	// Restore stdout
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("Command failed: %v", err)
+	}
+
+	// Read captured output
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
+	// Expected output should NOT include docs/ or build/ directories
+	// since they have no .go files
+	expectedSrcSeparator := "=== " + filepath.ToSlash(filepath.Join("src", "main.go")) + " ==="
+	expectedTestSeparator := "=== " + filepath.ToSlash(filepath.Join("tests", "unit", "test.go")) + " ==="
+
+	expected := `├── src/
+│   └── main.go
+└── tests/
+    └── unit/
+        └── test.go
+
+` + expectedSrcSeparator + `
+package main
+
+` + expectedTestSeparator + `
+package test
+
+`
+
+	if output != expected {
+		t.Errorf("Output mismatch.\nExpected (%d bytes):\n%q\n\nGot (%d bytes):\n%q", len(expected), expected, len(output), output)
+	}
+
+	// Verify docs/ and build/ are NOT in the output
+	if strings.Contains(output, "docs/") {
+		t.Error("Output should not contain 'docs/' directory (it has no .go files)")
+	}
+	if strings.Contains(output, "build/") {
+		t.Error("Output should not contain 'build/' directory (it's empty)")
+	}
+	if strings.Contains(output, "README.md") {
+		t.Error("Output should not contain 'README.md' (filtered out by include pattern)")
 	}
 }
