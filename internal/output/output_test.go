@@ -213,20 +213,13 @@ func TestFormatter_FileReadError(t *testing.T) {
 	}
 
 	err := formatter.Format(root, entries)
-	if err != nil {
-		t.Fatalf("Format should not fail on file read error: %v", err)
+	if err == nil {
+		t.Fatal("Expected error for nonexistent file, got nil")
 	}
 
-	result := buf.String()
-
-	// Should have separator
-	if !strings.Contains(result, "=== nonexistent.txt ===") {
-		t.Error("Expected file separator even for unreadable file")
-	}
-
-	// Should have error marker
-	if !strings.Contains(result, "[Error reading file:") {
-		t.Error("Expected error marker in output")
+	// Should have error message
+	if !strings.Contains(err.Error(), "failed to read file") {
+		t.Errorf("Expected 'failed to read file' in error message, got: %v", err)
 	}
 }
 

@@ -50,18 +50,12 @@ func (f *Formatter) Format(treeRoot *tree.Node, entries []scanner.FileEntry) err
 		// Read and write file contents
 		content, err := os.ReadFile(entry.Path)
 		if err != nil {
-			// Log error to stderr and continue
-			fmt.Fprintf(os.Stderr, "Warning: cannot read file %s: %v\n", entry.RelPath, err)
-			// Write error marker
-			errorMsg := fmt.Sprintf("[Error reading file: %v]\n", err)
-			if _, writeErr := f.writer.Write([]byte(errorMsg)); writeErr != nil {
-				return fmt.Errorf("failed to write error message: %w", writeErr)
-			}
-		} else {
-			// Write file content
-			if _, err := f.writer.Write(content); err != nil {
-				return fmt.Errorf("failed to write file content for %s: %w", entry.RelPath, err)
-			}
+			return fmt.Errorf("failed to read file %s: %w", entry.RelPath, err)
+		}
+
+		// Write file content
+		if _, err := f.writer.Write(content); err != nil {
+			return fmt.Errorf("failed to write file content for %s: %w", entry.RelPath, err)
 		}
 
 		// Add blank line after file content

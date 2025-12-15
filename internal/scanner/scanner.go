@@ -53,16 +53,14 @@ func (s *Scanner) Scan() ([]FileEntry, error) {
 
 	err := filepath.WalkDir(s.Root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			// Log warning to stderr and continue
-			fmt.Fprintf(os.Stderr, "Warning: cannot access %s: %v\n", path, err)
-			return nil
+			// Return error immediately (don't skip)
+			return fmt.Errorf("cannot access %s: %w", path, err)
 		}
 
 		// Get file info
 		info, err := d.Info()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: cannot get info for %s: %v\n", path, err)
-			return nil
+			return fmt.Errorf("cannot get info for %s: %w", path, err)
 		}
 
 		isDir := d.IsDir()
@@ -80,8 +78,7 @@ func (s *Scanner) Scan() ([]FileEntry, error) {
 		// Get relative path
 		relPath, err := filepath.Rel(s.Root, path)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: cannot get relative path for %s: %v\n", path, err)
-			return nil
+			return fmt.Errorf("cannot get relative path for %s: %w", path, err)
 		}
 
 		// Skip root directory itself
