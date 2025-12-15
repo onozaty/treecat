@@ -109,13 +109,12 @@ internal/scanner/scanner.go
 | ファイルの読み取り権限なし | 警告を出力、そのファイルをスキップ |
 | ファイル読み取り中のエラー | 警告を出力、次のファイルに進む |
 | 無効なGlobパターン | 致命的エラー、エラーメッセージを表示して終了 |
-| .gitignoreの解析エラー | 警告を出力、.gitignoreなしで継続 |
+| .gitignoreの読み取りエラー | 致命的エラー、エラーメッセージを表示して終了 |
 | 対象ファイルが見つからない | 空のツリーを出力、正常終了 |
 
 #### 終了コード
-- `0`: 正常終了
+- `0`: 正常終了（警告があっても処理が継続できた場合を含む）
 - `1`: 致命的エラー
-- `2`: 警告あり（部分的に成功）
 
 ## コマンドライン インターフェース
 
@@ -186,22 +185,17 @@ treecat . --include "**/*.go" --exclude "**/*_test.go" > main-code.txt
 │   │   ├── scanner.go           # ディレクトリ走査
 │   │   └── scanner_test.go      # スキャナのテスト
 │   ├── tree/
-│   │   ├── builder.go           # ツリー構造の生成とレンダリング
-│   │   └── builder_test.go      # ツリービルダのテスト
+│   │   ├── tree.go              # ツリー構造の生成とレンダリング
+│   │   └── tree_test.go         # ツリーのテスト
 │   └── output/
-│       ├── formatter.go         # 出力フォーマット
-│       └── formatter_test.go    # フォーマッタのテスト
-├── testdata/                    # テスト用フィクスチャ
-│   ├── simple/
-│   ├── with_gitignore/
-│   └── nested/
+│       ├── output.go            # 出力フォーマット
+│       └── output_test.go       # フォーマッタのテスト
+├── testdata/                    # テスト用フィクスチャ（現在は空）
 ├── go.mod                       # Goモジュール定義
 ├── go.sum                       # 依存関係のチェックサム
 ├── .gitignore                   # Git除外設定
 ├── README.md                    # プロジェクト説明
-├── SPEC.md                      # 本仕様書
-├── LICENSE                      # ライセンス（MIT）
-└── Makefile                     # ビルド・テストコマンド
+└── SPEC.md                      # 本仕様書
 ```
 
 ## 依存ライブラリ
@@ -325,18 +319,19 @@ type Node struct {
 | 隠しファイル | デフォルトで含める |
 | .gitignoreなし | 通常通り継続 |
 | 複数の.gitignore | ルートの.gitignoreのみ処理（v1） |
-| excludeとincludeの競合 | includeが優先 |
+| excludeとincludeの競合 | excludeが先に評価され、その後includeをチェック |
 | 空のディレクトリ引数 | カレントディレクトリを使用 |
 
 ## ビルドとテスト
 
-### Makefileターゲット
+### ビルド
 
 ```bash
-make build      # bin/treecatにビルド
-make test       # すべてのテストを実行
-make install    # $GOPATH/binにインストール
-make clean      # バイナリを削除
+# ビルド
+go build -o bin/treecat ./cmd/treecat
+
+# インストール
+go install ./cmd/treecat
 ```
 
 ### テスト戦略
@@ -346,15 +341,19 @@ make clean      # バイナリを削除
 
 - `filter_test.go`: パターンマッチング、.gitignore統合、フィルタ合成
 - `scanner_test.go`: ディレクトリ走査、フィルタ適用、ソート
-- `builder_test.go`: ツリー構築、レンダリング、ネスト構造
-- `formatter_test.go`: 出力フォーマット、エラーハンドリング
+- `tree_test.go`: ツリー構築、レンダリング、ネスト構造
+- `output_test.go`: 出力フォーマット、エラーハンドリング
 
 #### 統合テスト
-`testdata/`のフィクスチャを使用：
+`main_test.go`にて実装：
 
-- `testdata/simple/` - 基本的なファイル群
-- `testdata/with_gitignore/` - .gitignoreのテスト
-- `testdata/nested/` - 深い階層構造のテスト
+- 基本的なディレクトリ出力
+- include/excludeパターン
+- .gitignoreサポートと--no-gitignoreフラグ
+- .gitディレクトリの除外
+- ネストされたディレクトリ構造
+
+テストは`t.TempDir()`を使用して一時ディレクトリで実行
 
 #### テストの実行
 ```bash
@@ -395,45 +394,40 @@ go tool cover -html=coverage.out
 6. ユニットテストの作成
 
 ### Phase 4: treeパッケージ
-1. Node構造体の定義
+1. Node構造体の定義（tree.go）
 2. ツリー構築アルゴリズムの実装
 3. ツリーレンダリングの実装
-4. ユニットテストの作成
+4. ユニットテストの作成（tree_test.go）
 
 ### Phase 5: outputパッケージ
-1. Formatterの実装
+1. Formatterの実装（output.go）
 2. ツリーセクションの出力
 3. ファイル内容セクションの出力
 4. エラーハンドリング
-5. ユニットテストの作成
+5. ユニットテストの作成（output_test.go）
 
 ### Phase 6: CLI統合
 1. cobraコマンドのセットアップ
-2. フラグの定義
+2. フラグの定義（cmd.Flags()から取得する方式）
 3. 各コンポーネントの統合
 4. エラーハンドリング
-5. 統合テストの作成
+5. 統合テストの作成（main_test.go）
 
-### Phase 7: テスト
-1. testdataフィクスチャの作成
-2. 統合テストの実装
-3. エッジケースのテスト
-
-### Phase 8: ドキュメント
+### Phase 7: ドキュメント
 1. README.mdの作成
 2. 使用例の追加
 3. コードコメントの追加
 
 ## 成功基準
 
-- [ ] ディレクトリをスキャンしてツリー+内容を出力できる
-- [ ] .gitignoreパターンを正しく適用できる
-- [ ] カスタムinclude/exclude Globパターンをサポートできる
-- [ ] .git/ディレクトリを常に除外できる
-- [ ] 標準出力に出力できる（パイプフレンドリー）
-- [ ] エラーを適切にハンドリングできる（致命的でないエラーで継続）
-- [ ] 適切なテストカバレッジがある（ユニット+統合）
-- [ ] 明確なドキュメントと使用例がある
+- [x] ディレクトリをスキャンしてツリー+内容を出力できる
+- [x] .gitignoreパターンを正しく適用できる
+- [x] カスタムinclude/exclude Globパターンをサポートできる
+- [x] .git/ディレクトリを常に除外できる
+- [x] 標準出力に出力できる（パイプフレンドリー）
+- [x] エラーを適切にハンドリングできる（致命的でないエラーで継続）
+- [x] 適切なテストカバレッジがある（ユニット+統合）
+- [ ] 明確なドキュメントと使用例がある（README.md未完成）
 
 ## 将来の拡張（スコープ外）
 
