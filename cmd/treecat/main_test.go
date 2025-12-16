@@ -45,7 +45,7 @@ func TestIntegration_BasicDirectory(t *testing.T) {
 	buf.ReadFrom(r)
 	output := buf.String()
 
-	expected := `├── file1.txt
+	expectedTree := `├── file1.txt
 └── file2.txt
 
 === file1.txt ===
@@ -53,6 +53,9 @@ Content 1
 === file2.txt ===
 Content 2
 `
+
+	// Expected output should include tmpDir as first line
+	expected := tmpDir + "\n" + expectedTree
 
 	if output != expected {
 		t.Errorf("Output mismatch.\nExpected:\n%s\n\nGot:\n%s", expected, output)
@@ -95,11 +98,13 @@ func TestIntegration_WithIncludePattern(t *testing.T) {
 	buf.ReadFrom(r)
 	output := buf.String()
 
-	expected := `└── main.go
+	expectedTree := `└── main.go
 
 === main.go ===
 package main
 `
+
+	expected := tmpDir + "\n" + expectedTree
 
 	if output != expected {
 		t.Errorf("Output mismatch.\nExpected:\n%s\n\nGot:\n%s", expected, output)
@@ -142,11 +147,13 @@ func TestIntegration_WithExcludePattern(t *testing.T) {
 	buf.ReadFrom(r)
 	output := buf.String()
 
-	expected := `└── main.go
+	expectedTree := `└── main.go
 
 === main.go ===
 package main
 `
+
+	expected := tmpDir + "\n" + expectedTree
 
 	if output != expected {
 		t.Errorf("Output mismatch.\nExpected:\n%s\n\nGot:\n%s", expected, output)
@@ -194,7 +201,7 @@ func TestIntegration_WithGitignore(t *testing.T) {
 	buf.ReadFrom(r)
 	output := buf.String()
 
-	expected := `├── .gitignore
+	expectedTree := `├── .gitignore
 └── main.go
 
 === .gitignore ===
@@ -203,6 +210,8 @@ func TestIntegration_WithGitignore(t *testing.T) {
 === main.go ===
 package main
 `
+
+	expected := tmpDir + "\n" + expectedTree
 
 	if output != expected {
 		t.Errorf("Output mismatch.\nExpected:\n%s\n\nGot:\n%s", expected, output)
@@ -251,7 +260,7 @@ func TestIntegration_WithNoGitignore(t *testing.T) {
 	buf.ReadFrom(r)
 	output := buf.String()
 
-	expected := `├── .gitignore
+	expectedTree := `├── .gitignore
 ├── app.log
 └── main.go
 
@@ -263,6 +272,8 @@ log content
 === main.go ===
 package main
 `
+
+	expected := tmpDir + "\n" + expectedTree
 
 	if output != expected {
 		t.Errorf("Output mismatch.\nExpected:\n%s\n\nGot:\n%s", expected, output)
@@ -311,11 +322,13 @@ func TestIntegration_GitDirectoryExcluded(t *testing.T) {
 	buf.ReadFrom(r)
 	output := buf.String()
 
-	expected := `└── main.go
+	expectedTree := `└── main.go
 
 === main.go ===
 package main
 `
+
+	expected := tmpDir + "\n" + expectedTree
 
 	if output != expected {
 		t.Errorf("Output mismatch.\nExpected:\n%s\n\nGot:\n%s", expected, output)
@@ -365,7 +378,7 @@ func TestIntegration_WithNestedDirectory(t *testing.T) {
 	output := buf.String()
 
 	expectedSeparator := "=== " + filepath.ToSlash(filepath.Join("subdir", "nested.txt")) + " ==="
-	expected := `├── subdir/
+	expectedTree := `├── subdir/
 │   └── nested.txt
 └── root.txt
 
@@ -374,6 +387,8 @@ root content
 ` + expectedSeparator + `
 nested content
 `
+
+	expected := tmpDir + "\n" + expectedTree
 
 	if output != expected {
 		t.Errorf("Output mismatch.\nExpected:\n%s\n\nGot:\n%s", expected, output)
@@ -424,7 +439,7 @@ func TestIntegration_PruneEmptyDirectories(t *testing.T) {
 	expectedSrcSeparator := "=== " + filepath.ToSlash(filepath.Join("src", "main.go")) + " ==="
 	expectedTestSeparator := "=== " + filepath.ToSlash(filepath.Join("tests", "unit", "test.go")) + " ==="
 
-	expected := `├── src/
+	expectedTree := `├── src/
 │   └── main.go
 └── tests/
     └── unit/
@@ -437,6 +452,8 @@ package main
 package test
 
 `
+
+	expected := tmpDir + "\n" + expectedTree
 
 	if output != expected {
 		t.Errorf("Output mismatch.\nExpected (%d bytes):\n%q\n\nGot (%d bytes):\n%q", len(expected), expected, len(output), output)

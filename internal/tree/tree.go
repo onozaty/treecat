@@ -17,9 +17,10 @@ type Node struct {
 }
 
 // Build builds a tree structure from a flat list of file entries.
-func Build(entries []scanner.FileEntry) *Node {
+// rootName is the name of the root directory to display.
+func Build(entries []scanner.FileEntry, rootName string) *Node {
 	root := &Node{
-		Name:  "",
+		Name:  rootName,
 		Path:  "",
 		IsDir: true,
 	}
@@ -139,38 +140,45 @@ func pruneEmptyDirectories(node *Node) {
 // Render renders the tree structure as a string with box-drawing characters.
 func Render(root *Node) string {
 	var builder strings.Builder
-	renderNode(root, "", true, &builder)
+
+	// Write root directory name as first line
+	if root.Name != "" {
+		builder.WriteString(root.Name)
+		builder.WriteString("\n")
+	}
+
+	// Render children
+	for i, child := range root.Children {
+		isLastChild := i == len(root.Children)-1
+		renderNode(child, "", isLastChild, &builder)
+	}
+
 	return builder.String()
 }
 
 // renderNode recursively renders a node and its children.
 func renderNode(node *Node, prefix string, isLast bool, builder *strings.Builder) {
-	// Skip root node name
-	if node.Name != "" {
-		// Determine the connector
-		connector := "├── "
-		if isLast {
-			connector = "└── "
-		}
-
-		// Write the current node
-		builder.WriteString(prefix)
-		builder.WriteString(connector)
-		builder.WriteString(node.Name)
-		if node.IsDir {
-			builder.WriteString("/")
-		}
-		builder.WriteString("\n")
+	// Determine the connector
+	connector := "├── "
+	if isLast {
+		connector = "└── "
 	}
+
+	// Write the current node
+	builder.WriteString(prefix)
+	builder.WriteString(connector)
+	builder.WriteString(node.Name)
+	if node.IsDir {
+		builder.WriteString("/")
+	}
+	builder.WriteString("\n")
 
 	// Render children
 	childPrefix := prefix
-	if node.Name != "" {
-		if isLast {
-			childPrefix += "    "
-		} else {
-			childPrefix += "│   "
-		}
+	if isLast {
+		childPrefix += "    "
+	} else {
+		childPrefix += "│   "
 	}
 
 	for i, child := range node.Children {

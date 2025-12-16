@@ -82,8 +82,8 @@ func run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to scan directory: %w", err)
 	}
 
-	// Build tree
-	treeRoot := tree.Build(entries)
+	// Build tree (pass original targetDir for display)
+	treeRoot := tree.Build(entries, targetDir)
 
 	// Create formatter and output
 	formatter := output.NewFormatter(os.Stdout)

@@ -9,7 +9,7 @@ import (
 
 func TestBuild_EmptyEntries(t *testing.T) {
 	entries := []scanner.FileEntry{}
-	root := Build(entries)
+	root := Build(entries, "")
 
 	if root.Name != "" {
 		t.Errorf("Expected root name to be empty, got %q", root.Name)
@@ -26,7 +26,7 @@ func TestBuild_SingleFile(t *testing.T) {
 	entries := []scanner.FileEntry{
 		{RelPath: "file.txt", IsDir: false},
 	}
-	root := Build(entries)
+	root := Build(entries, "")
 
 	if len(root.Children) != 1 {
 		t.Fatalf("Expected 1 child, got %d", len(root.Children))
@@ -51,7 +51,7 @@ func TestBuild_NestedStructure(t *testing.T) {
 		{RelPath: "dir2/subdir/file3.txt", IsDir: false},
 		{RelPath: "file.txt", IsDir: false},
 	}
-	root := Build(entries)
+	root := Build(entries, "")
 
 	// Check root has 3 children: dir1, dir2, file.txt
 	if len(root.Children) != 3 {
@@ -213,7 +213,7 @@ func TestBuildAndRender_Integration(t *testing.T) {
 		{RelPath: "internal/scanner/scanner.go", IsDir: false},
 	}
 
-	root := Build(entries)
+	root := Build(entries, "")
 	result := Render(root)
 
 	// Check that the output contains expected patterns
@@ -264,7 +264,7 @@ func TestPruneEmptyDirectories_LeafDirectory(t *testing.T) {
 		{RelPath: "empty", IsDir: true},
 		{RelPath: "file.txt", IsDir: false},
 	}
-	root := Build(entries)
+	root := Build(entries, "")
 
 	// Should only have the file, empty directory should be pruned
 	if len(root.Children) != 1 {
@@ -282,7 +282,7 @@ func TestPruneEmptyDirectories_IntermediateEmpty(t *testing.T) {
 		{RelPath: "dir1/dir2/file.txt", IsDir: false},
 		{RelPath: "empty", IsDir: true},
 	}
-	root := Build(entries)
+	root := Build(entries, "")
 
 	// Should have only dir1, empty should be pruned
 	if len(root.Children) != 1 {
@@ -317,7 +317,7 @@ func TestPruneEmptyDirectories_NestedEmpty(t *testing.T) {
 		{RelPath: "dir1/dir2", IsDir: true},
 		{RelPath: "dir1/dir2/dir3", IsDir: true},
 	}
-	root := Build(entries)
+	root := Build(entries, "")
 
 	// All directories are empty, should have no children
 	if len(root.Children) != 0 {
@@ -335,7 +335,7 @@ func TestPruneEmptyDirectories_MixedStructure(t *testing.T) {
 		{RelPath: "dir3/sub/file.txt", IsDir: false},
 		{RelPath: "dir4", IsDir: true},
 	}
-	root := Build(entries)
+	root := Build(entries, "")
 
 	// Should have dir1 and dir3, dir2 and dir4 should be pruned
 	if len(root.Children) != 2 {
@@ -368,7 +368,7 @@ func TestPruneEmptyDirectories_AllEmpty(t *testing.T) {
 		{RelPath: "dir2", IsDir: true},
 		{RelPath: "dir3", IsDir: true},
 	}
-	root := Build(entries)
+	root := Build(entries, "")
 
 	// All directories are empty, should have no children
 	if len(root.Children) != 0 {
@@ -381,7 +381,7 @@ func TestPruneEmptyDirectories_OnlyFiles(t *testing.T) {
 		{RelPath: "file1.txt", IsDir: false},
 		{RelPath: "file2.txt", IsDir: false},
 	}
-	root := Build(entries)
+	root := Build(entries, "")
 
 	// Should have both files unchanged
 	if len(root.Children) != 2 {
