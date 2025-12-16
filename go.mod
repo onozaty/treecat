@@ -6,6 +6,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.9.1
 	github.com/go-git/go-git/v5 v5.16.4
 	github.com/spf13/cobra v1.10.2
+	golang.org/x/text v0.24.0
 )
 
 require (

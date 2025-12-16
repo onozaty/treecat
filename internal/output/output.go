@@ -5,19 +5,30 @@ import (
 	"io"
 	"os"
 
+	"github.com/onozaty/treecat/internal/encoding"
 	"github.com/onozaty/treecat/internal/scanner"
 	"github.com/onozaty/treecat/internal/tree"
 )
 
 // Formatter formats and writes the output.
 type Formatter struct {
-	writer io.Writer
+	writer    io.Writer
+	converter encoding.Converter
 }
 
 // NewFormatter creates a new Formatter.
 func NewFormatter(writer io.Writer) *Formatter {
 	return &Formatter{
-		writer: writer,
+		writer:    writer,
+		converter: nil,
+	}
+}
+
+// NewFormatterWithEncoding creates a new Formatter with encoding conversion support.
+func NewFormatterWithEncoding(writer io.Writer, converter encoding.Converter) *Formatter {
+	return &Formatter{
+		writer:    writer,
+		converter: converter,
 	}
 }
 
@@ -51,6 +62,14 @@ func (f *Formatter) Format(treeRoot *tree.Node, entries []scanner.FileEntry) err
 		content, err := os.ReadFile(entry.Path)
 		if err != nil {
 			return fmt.Errorf("failed to read file %s: %w", entry.RelPath, err)
+		}
+
+		// Convert encoding if converter is set
+		if f.converter != nil {
+			content, err = f.converter.ConvertToUTF8(content)
+			if err != nil {
+				return fmt.Errorf("failed to convert encoding for %s: %w", entry.RelPath, err)
+			}
 		}
 
 		// Write file content

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/onozaty/treecat/internal/encoding"
 	"github.com/onozaty/treecat/internal/filter"
 	"github.com/onozaty/treecat/internal/output"
 	"github.com/onozaty/treecat/internal/scanner"
@@ -26,6 +27,7 @@ Perfect for providing codebase context to LLMs.`,
 	cmd.Flags().StringSliceP("exclude", "e", []string{}, "Exclude patterns (comma-separated glob patterns)")
 	cmd.Flags().StringSliceP("include", "i", []string{}, "Include patterns (comma-separated glob patterns)")
 	cmd.Flags().Bool("no-gitignore", false, "Ignore .gitignore file")
+	cmd.Flags().String("encoding", "", "Input file encoding (e.g., shift_jis, euc-jp, windows-1252)")
 
 	return cmd
 }
@@ -37,6 +39,8 @@ func run(cmd *cobra.Command, args []string) error {
 	excludePatterns, _ := cmd.Flags().GetStringSlice("exclude")
 	includePatterns, _ := cmd.Flags().GetStringSlice("include")
 	noGitignore, _ := cmd.Flags().GetBool("no-gitignore")
+	encodingName, _ := cmd.Flags().GetString("encoding")
+
 	// Get target directory (default to current directory)
 	targetDir := "."
 	if len(args) > 0 {
@@ -85,8 +89,14 @@ func run(cmd *cobra.Command, args []string) error {
 	// Build tree (pass original targetDir for display)
 	treeRoot := tree.Build(entries, targetDir)
 
+	// Create encoding converter
+	converter, err := encoding.NewConverter(encodingName)
+	if err != nil {
+		return fmt.Errorf("failed to create encoding converter: %w", err)
+	}
+
 	// Create formatter and output
-	formatter := output.NewFormatter(os.Stdout)
+	formatter := output.NewFormatterWithEncoding(os.Stdout, converter)
 	if err := formatter.Format(treeRoot, entries); err != nil {
 		return fmt.Errorf("failed to format output: %w", err)
 	}

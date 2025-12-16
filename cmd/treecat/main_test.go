@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"golang.org/x/text/encoding/japanese"
 )
 
 func TestIntegration_BasicDirectory(t *testing.T) {
@@ -468,5 +470,206 @@ package test
 	}
 	if strings.Contains(output, "README.md") {
 		t.Error("Output should not contain 'README.md' (filtered out by include pattern)")
+	}
+}
+
+func TestIntegration_EncodingConversion(t *testing.T) {
+	// Create temporary test directory
+	tmpDir := t.TempDir()
+
+	// Create a Shift_JIS encoded file
+	sjisFile := filepath.Join(tmpDir, "japanese.txt")
+	originalText := "こんにちは世界"
+	encoder := japanese.ShiftJIS.NewEncoder()
+	sjisBytes, err := encoder.Bytes([]byte(originalText))
+	if err != nil {
+		t.Fatalf("Failed to encode to Shift_JIS: %v", err)
+	}
+	if err := os.WriteFile(sjisFile, sjisBytes, 0644); err != nil {
+		t.Fatalf("Failed to create Shift_JIS file: %v", err)
+	}
+
+	// Create a UTF-8 file for comparison
+	utf8File := filepath.Join(tmpDir, "english.txt")
+	utf8Content := "Hello, World!"
+	if err := os.WriteFile(utf8File, []byte(utf8Content), 0644); err != nil {
+		t.Fatalf("Failed to create UTF-8 file: %v", err)
+	}
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// Run command with --encoding flag
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--encoding", "shift_jis", tmpDir})
+	err = cmd.Execute()
+
+	// Restore stdout
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("Command failed: %v", err)
+	}
+
+	// Read captured output
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	result := buf.String()
+
+	// Verify the Shift_JIS file was converted to UTF-8
+	if !strings.Contains(result, originalText) {
+		t.Errorf("Expected UTF-8 content %q in output, but not found", originalText)
+	}
+
+	// Verify the UTF-8 file is output correctly
+	if !strings.Contains(result, utf8Content) {
+		t.Errorf("Expected UTF-8 content %q in output, but not found", utf8Content)
+	}
+
+	// Verify tree structure
+	if !strings.Contains(result, "japanese.txt") {
+		t.Error("Expected 'japanese.txt' in tree output")
+	}
+	if !strings.Contains(result, "english.txt") {
+		t.Error("Expected 'english.txt' in tree output")
+	}
+
+	// Verify file separators
+	if !strings.Contains(result, "=== japanese.txt ===") {
+		t.Error("Expected separator for japanese.txt")
+	}
+	if !strings.Contains(result, "=== english.txt ===") {
+		t.Error("Expected separator for english.txt")
+	}
+}
+
+func TestIntegration_InvalidEncoding(t *testing.T) {
+	// Create temporary test directory
+	tmpDir := t.TempDir()
+
+	// Create a simple file
+	testFile := filepath.Join(tmpDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Run command with invalid encoding (no need to capture stdout for error test)
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--encoding", "invalid-encoding", tmpDir})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("Expected error for invalid encoding, got nil")
+	}
+
+	// Verify error message mentions encoding
+	errorMsg := err.Error()
+	if !strings.Contains(errorMsg, "encoding") {
+		t.Errorf("Expected 'encoding' in error message, got: %s", errorMsg)
+	}
+}
+
+func TestIntegration_EncodingWithMultipleFiles(t *testing.T) {
+	// Create temporary test directory with subdirectory
+	tmpDir := t.TempDir()
+	subdir := filepath.Join(tmpDir, "subdir")
+	if err := os.Mkdir(subdir, 0755); err != nil {
+		t.Fatalf("Failed to create subdir: %v", err)
+	}
+
+	// Create multiple Shift_JIS files
+	files := map[string]string{
+		filepath.Join(tmpDir, "file1.txt"):    "ファイル１",
+		filepath.Join(subdir, "file2.txt"):    "ファイル２",
+		filepath.Join(tmpDir, "file3.txt"):    "ファイル３",
+	}
+
+	encoder := japanese.ShiftJIS.NewEncoder()
+	for path, text := range files {
+		sjisBytes, err := encoder.Bytes([]byte(text))
+		if err != nil {
+			t.Fatalf("Failed to encode %s: %v", path, err)
+		}
+		if err := os.WriteFile(path, sjisBytes, 0644); err != nil {
+			t.Fatalf("Failed to create file %s: %v", path, err)
+		}
+	}
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// Run command with --encoding flag
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--encoding", "shift_jis", tmpDir})
+	err := cmd.Execute()
+
+	// Restore stdout
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("Command failed: %v", err)
+	}
+
+	// Read captured output
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	result := buf.String()
+
+	// Verify all files were converted correctly
+	for _, text := range files {
+		if !strings.Contains(result, text) {
+			t.Errorf("Expected text %q in output, but not found", text)
+		}
+	}
+
+	// Verify tree structure includes subdirectory
+	if !strings.Contains(result, "subdir/") {
+		t.Error("Expected 'subdir/' in tree output")
+	}
+}
+
+func TestIntegration_NoEncodingFlag(t *testing.T) {
+	// Create temporary test directory
+	tmpDir := t.TempDir()
+
+	// Create a UTF-8 file
+	testFile := filepath.Join(tmpDir, "test.txt")
+	content := "Hello, 世界"
+	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// Run command without --encoding flag (should work as before)
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{tmpDir})
+	err := cmd.Execute()
+
+	// Restore stdout
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("Command failed: %v", err)
+	}
+
+	// Read captured output
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	result := buf.String()
+
+	// Verify content is output (no conversion, raw bytes)
+	if !strings.Contains(result, content) {
+		t.Errorf("Expected content %q in output", content)
 	}
 }

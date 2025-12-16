@@ -7,8 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/onozaty/treecat/internal/encoding"
 	"github.com/onozaty/treecat/internal/scanner"
 	"github.com/onozaty/treecat/internal/tree"
+	"golang.org/x/text/encoding/japanese"
 )
 
 func TestFormatter_EmptyOutput(t *testing.T) {
@@ -338,5 +340,208 @@ Root content
 
 	if result != expected {
 		t.Errorf("Output mismatch.\nExpected:\n%s\n\nGot:\n%s", expected, result)
+	}
+}
+
+func TestFormatter_WithEncodingConversion(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a file with Shift_JIS content
+	filePath := filepath.Join(tmpDir, "sjis.txt")
+	originalText := "こんにちは世界"
+	encoder := japanese.ShiftJIS.NewEncoder()
+	shiftJISBytes, err := encoder.Bytes([]byte(originalText))
+	if err != nil {
+		t.Fatalf("Failed to encode to Shift_JIS: %v", err)
+	}
+	if err := os.WriteFile(filePath, shiftJISBytes, 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Create converter
+	converter, err := encoding.NewConverter("shift_jis")
+	if err != nil {
+		t.Fatalf("Failed to create converter: %v", err)
+	}
+
+	var buf bytes.Buffer
+	formatter := NewFormatterWithEncoding(&buf, converter)
+
+	root := &tree.Node{
+		Name:  "",
+		IsDir: true,
+		Children: []*tree.Node{
+			{Name: "sjis.txt", Path: "sjis.txt", IsDir: false},
+		},
+	}
+
+	entries := []scanner.FileEntry{
+		{Path: filePath, RelPath: "sjis.txt", IsDir: false},
+	}
+
+	err = formatter.Format(root, entries)
+	if err != nil {
+		t.Fatalf("Format failed: %v", err)
+	}
+
+	result := buf.String()
+
+	// Check that the content was converted to UTF-8
+	if !strings.Contains(result, originalText) {
+		t.Errorf("Expected UTF-8 content %q in output", originalText)
+	}
+
+	// Verify tree section
+	if !strings.Contains(result, "└── sjis.txt") {
+		t.Error("Expected tree output to contain file")
+	}
+
+	// Verify file separator
+	if !strings.Contains(result, "=== sjis.txt ===") {
+		t.Error("Expected file separator")
+	}
+}
+
+func TestFormatter_WithoutConverter(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a file with UTF-8 content
+	filePath := filepath.Join(tmpDir, "utf8.txt")
+	content := "Hello, 世界"
+	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	var buf bytes.Buffer
+	// Create formatter without converter (nil converter)
+	formatter := NewFormatterWithEncoding(&buf, nil)
+
+	root := &tree.Node{
+		Name:  "",
+		IsDir: true,
+		Children: []*tree.Node{
+			{Name: "utf8.txt", Path: "utf8.txt", IsDir: false},
+		},
+	}
+
+	entries := []scanner.FileEntry{
+		{Path: filePath, RelPath: "utf8.txt", IsDir: false},
+	}
+
+	err := formatter.Format(root, entries)
+	if err != nil {
+		t.Fatalf("Format failed: %v", err)
+	}
+
+	result := buf.String()
+
+	// Check that the content is output as-is (no conversion)
+	if !strings.Contains(result, content) {
+		t.Errorf("Expected content %q in output", content)
+	}
+}
+
+func TestFormatter_EncodingConversionError(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a file with invalid Shift_JIS content (binary data)
+	filePath := filepath.Join(tmpDir, "binary.dat")
+	binaryContent := []byte{0x00, 0x01, 0x02, 0xFF, 0xFE, 0xFD}
+	if err := os.WriteFile(filePath, binaryContent, 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Create converter
+	converter, err := encoding.NewConverter("shift_jis")
+	if err != nil {
+		t.Fatalf("Failed to create converter: %v", err)
+	}
+
+	var buf bytes.Buffer
+	formatter := NewFormatterWithEncoding(&buf, converter)
+
+	root := &tree.Node{
+		Name:  "",
+		IsDir: true,
+		Children: []*tree.Node{
+			{Name: "binary.dat", Path: "binary.dat", IsDir: false},
+		},
+	}
+
+	entries := []scanner.FileEntry{
+		{Path: filePath, RelPath: "binary.dat", IsDir: false},
+	}
+
+	// Note: transform.Reader doesn't return errors for invalid sequences,
+	// it uses replacement characters instead. So this should succeed.
+	err = formatter.Format(root, entries)
+	if err != nil {
+		t.Fatalf("Format should not fail with invalid bytes (replacement chars used): %v", err)
+	}
+
+	result := buf.String()
+	// Result should contain something (with replacement characters)
+	if len(result) == 0 {
+		t.Error("Expected non-empty output")
+	}
+}
+
+func TestFormatter_MultipleFilesWithEncoding(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create multiple files with Shift_JIS content
+	file1Path := filepath.Join(tmpDir, "file1.txt")
+	file2Path := filepath.Join(tmpDir, "file2.txt")
+
+	text1 := "ファイル１"
+	text2 := "ファイル２"
+
+	encoder := japanese.ShiftJIS.NewEncoder()
+	sjisBytes1, _ := encoder.Bytes([]byte(text1))
+	sjisBytes2, _ := encoder.Bytes([]byte(text2))
+
+	if err := os.WriteFile(file1Path, sjisBytes1, 0644); err != nil {
+		t.Fatalf("Failed to create file1: %v", err)
+	}
+	if err := os.WriteFile(file2Path, sjisBytes2, 0644); err != nil {
+		t.Fatalf("Failed to create file2: %v", err)
+	}
+
+	// Create converter
+	converter, err := encoding.NewConverter("shift_jis")
+	if err != nil {
+		t.Fatalf("Failed to create converter: %v", err)
+	}
+
+	var buf bytes.Buffer
+	formatter := NewFormatterWithEncoding(&buf, converter)
+
+	root := &tree.Node{
+		Name:  "",
+		IsDir: true,
+		Children: []*tree.Node{
+			{Name: "file1.txt", Path: "file1.txt", IsDir: false},
+			{Name: "file2.txt", Path: "file2.txt", IsDir: false},
+		},
+	}
+
+	entries := []scanner.FileEntry{
+		{Path: file1Path, RelPath: "file1.txt", IsDir: false},
+		{Path: file2Path, RelPath: "file2.txt", IsDir: false},
+	}
+
+	err = formatter.Format(root, entries)
+	if err != nil {
+		t.Fatalf("Format failed: %v", err)
+	}
+
+	result := buf.String()
+
+	// Check that both files were converted to UTF-8
+	if !strings.Contains(result, text1) {
+		t.Errorf("Expected UTF-8 content %q in output", text1)
+	}
+	if !strings.Contains(result, text2) {
+		t.Errorf("Expected UTF-8 content %q in output", text2)
 	}
 }
