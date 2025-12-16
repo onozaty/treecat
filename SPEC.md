@@ -181,7 +181,7 @@ treecat . --include "**/*.go,**/*.md"
 ```
 
 #### `--no-gitignore`
-.gitignoreファイルを無視（将来の拡張として検討）
+.gitignoreファイルを無視
 
 ```bash
 treecat . --no-gitignore
@@ -265,8 +265,6 @@ treecat . --include "**/*.go" --exclude "**/*_test.go" > main-code.txt
 
 ## 依存ライブラリ
 
-### 必須ライブラリ
-
 1. **github.com/spf13/cobra**
    - 用途: CLIフレームワーク
    - 理由: 業界標準、優れたドキュメント、フラグ解析が容易
@@ -282,13 +280,6 @@ treecat . --include "**/*.go" --exclude "**/*_test.go" > main-code.txt
 4. **golang.org/x/text/encoding**
    - 用途: 文字エンコーディング変換（Shift_JIS, EUC-JP, etc. → UTF-8）
    - 理由: Goの公式サブリポジトリ、IANA標準エンコーディングの包括的サポート、htmlindexパッケージによる簡単なエンコーディング名解決
-
-### 標準ライブラリ
-
-- `filepath.WalkDir` - ディレクトリ走査
-- `os.ReadFile` - ファイル読み取り
-- `io.Writer` - 出力インターフェース
-- `sort` - ファイルのソート
 
 ## 実装の詳細
 
@@ -436,79 +427,3 @@ go test -v ./...
 go test -coverprofile=coverage.out ./...
 go tool cover -html=coverage.out
 ```
-
-## 実装フェーズ
-
-### Phase 1: プロジェクトのブートストラップ
-1. Goモジュールの初期化
-2. ディレクトリ構造の作成
-3. .gitignoreの追加
-4. 依存ライブラリのインストール
-5. 基本的なmain.goの作成
-6. Makefileの作成
-
-### Phase 2: filterパッケージ
-1. Filterインターフェースの定義
-2. GitignoreFilterの実装
-3. PatternFilterの実装
-4. CompositeFilterの実装
-5. ユニットテストの作成
-
-### Phase 3: scannerパッケージ
-1. FileEntry構造体の定義
-2. Scannerの実装
-3. filepath.WalkDirを使用した走査
-4. フィルタの適用
-5. ファイルのソート
-6. ユニットテストの作成
-
-### Phase 4: treeパッケージ
-1. Node構造体の定義（tree.go）
-2. ツリー構築アルゴリズムの実装
-3. ツリーレンダリングの実装
-4. ユニットテストの作成（tree_test.go）
-
-### Phase 5: outputパッケージ
-1. Formatterの実装（output.go）
-2. ツリーセクションの出力
-3. ファイル内容セクションの出力
-4. エラーハンドリング
-5. ユニットテストの作成（output_test.go）
-
-### Phase 6: CLI統合
-1. cobraコマンドのセットアップ
-2. フラグの定義（cmd.Flags()から取得する方式）
-3. 各コンポーネントの統合
-4. エラーハンドリング
-5. 統合テストの作成（main_test.go）
-
-### Phase 7: ドキュメント
-1. README.mdの作成
-2. 使用例の追加
-3. コードコメントの追加
-
-## 成功基準
-
-- [x] ディレクトリをスキャンしてツリー+内容を出力できる
-- [x] .gitignoreパターンを正しく適用できる
-- [x] カスタムinclude/exclude Globパターンをサポートできる
-- [x] .git/ディレクトリを常に除外できる
-- [x] 標準出力に出力できる（パイプフレンドリー）
-- [x] エラーを適切にハンドリングできる（エラー発生時は即座に終了）
-- [x] 適切なテストカバレッジがある（ユニット+統合）
-- [ ] 明確なドキュメントと使用例がある（README.md未完成）
-
-## 将来の拡張（スコープ外）
-
-以下の機能はv1では実装せず、将来のバージョンで検討：
-
-- 複数の.gitignoreサポート（ネストされたディレクトリ）
-- `--max-file-size`フラグ（巨大ファイルのスキップ）
-- トークン数のカウント表示
-- 複数の出力フォーマット（JSON、XMLなど）
-- 並列ファイル読み取り
-- プログレスバー表示
-- 設定ファイルのサポート（.treecatrc）
-- ファイル重要度による並び替え（yekのような機能）
-- バイナリファイルの自動検出と除外
-- シンボリックリンクのフォロー機能
