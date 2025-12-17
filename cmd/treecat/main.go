@@ -13,15 +13,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	Version = "dev"
+	Commit  = "dev"
+)
+
 func newRootCmd() *cobra.Command {
+	versionInfo := Version
+	if Commit != "dev" {
+		versionInfo = fmt.Sprintf("%s (commit: %s)", Version, Commit)
+	}
+
 	cmd := &cobra.Command{
 		Use:   "treecat [directory]",
 		Short: "Combine multiple files into one with tree structure for LLM consumption",
 		Long: `treecat is a CLI tool that combines multiple files from a directory into a single output.
 It displays a directory tree structure at the top, followed by file contents separated by markers.
 Perfect for providing codebase context to LLMs.`,
-		Args: cobra.MaximumNArgs(1),
-		RunE: run,
+		Version: versionInfo,
+		Args:    cobra.MaximumNArgs(1),
+		RunE:    run,
 	}
 
 	cmd.Flags().StringSliceP("exclude", "e", []string{}, "Exclude patterns (comma-separated glob patterns)")
