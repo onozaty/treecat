@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/onozaty/treecat/internal/encoding"
 	"github.com/onozaty/treecat/internal/scanner"
@@ -12,8 +13,9 @@ import (
 
 // Formatter formats and writes the output.
 type Formatter struct {
-	writer    io.Writer
-	converter encoding.Converter
+	writer      io.Writer
+	converter   encoding.Converter               // DEPRECATED: for backward compat during transition
+	encodingMap map[string]encoding.Converter    // extension to converter map
 }
 
 // NewFormatter creates a new Formatter.
@@ -29,6 +31,14 @@ func NewFormatterWithEncoding(writer io.Writer, converter encoding.Converter) *F
 	return &Formatter{
 		writer:    writer,
 		converter: converter,
+	}
+}
+
+// NewFormatterWithEncodingMap creates a Formatter with per-extension encoding support.
+func NewFormatterWithEncodingMap(writer io.Writer, encodingMap map[string]encoding.Converter) *Formatter {
+	return &Formatter{
+		writer:      writer,
+		encodingMap: encodingMap,
 	}
 }
 
@@ -64,13 +74,31 @@ func (f *Formatter) Format(treeRoot *tree.Node, entries []scanner.FileEntry) err
 			return fmt.Errorf("failed to read file %s: %w", entry.RelPath, err)
 		}
 
-		// Convert encoding if converter is set
-		if f.converter != nil {
-			content, err = f.converter.ConvertToUTF8(content)
+		// Select converter based on extension (for encodingMap) or use single converter
+		var converter encoding.Converter
+		if f.encodingMap != nil {
+			ext := filepath.Ext(entry.Path)
+			if ext != "" {
+				normalizedExt := encoding.NormalizeExtension(ext)
+				converter = f.encodingMap[normalizedExt]
+			}
+		} else if f.converter != nil {
+			converter = f.converter
+		}
+
+		// Convert encoding if converter found
+		if converter != nil {
+			content, err = converter.ConvertToUTF8(content)
 			if err != nil {
 				return fmt.Errorf("failed to convert encoding for %s: %w", entry.RelPath, err)
 			}
 		}
+
+		// Remove BOM from all files (not just converted ones)
+		content, _ = encoding.RemoveBOM(content)
+
+		// Normalize line endings for all files (not just converted ones)
+		content = encoding.NormalizeNewlines(content)
 
 		// Write file content
 		if _, err := f.writer.Write(content); err != nil {

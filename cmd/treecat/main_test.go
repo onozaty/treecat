@@ -501,9 +501,9 @@ func TestIntegration_EncodingConversion(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	// Run command with --encoding flag
+	// Run command with --encoding-map flag
 	cmd := newRootCmd()
-	cmd.SetArgs([]string{"--encoding", "shift_jis", tmpDir})
+	cmd.SetArgs([]string{"--encoding-map", "txt:shift_jis", tmpDir})
 	err = cmd.Execute()
 
 	// Restore stdout
@@ -558,7 +558,7 @@ func TestIntegration_InvalidEncoding(t *testing.T) {
 
 	// Run command with invalid encoding (no need to capture stdout for error test)
 	cmd := newRootCmd()
-	cmd.SetArgs([]string{"--encoding", "invalid-encoding", tmpDir})
+	cmd.SetArgs([]string{"--encoding-map", "txt:invalid-encoding", tmpDir})
 
 	err := cmd.Execute()
 	if err == nil {
@@ -603,9 +603,9 @@ func TestIntegration_EncodingWithMultipleFiles(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	// Run command with --encoding flag
+	// Run command with --encoding-map flag
 	cmd := newRootCmd()
-	cmd.SetArgs([]string{"--encoding", "shift_jis", tmpDir})
+	cmd.SetArgs([]string{"--encoding-map", "txt:shift_jis", tmpDir})
 	err := cmd.Execute()
 
 	// Restore stdout
@@ -650,7 +650,7 @@ func TestIntegration_NoEncodingFlag(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	// Run command without --encoding flag (should work as before)
+	// Run command without --encoding-map flag (should work as before)
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{tmpDir})
 	err := cmd.Execute()

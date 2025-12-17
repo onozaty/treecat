@@ -545,3 +545,285 @@ func TestFormatter_MultipleFilesWithEncoding(t *testing.T) {
 		t.Errorf("Expected UTF-8 content %q in output", text2)
 	}
 }
+
+func TestFormatter_WithEncodingMap_SingleExtension(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a Shift_JIS encoded .txt file
+	text := "こんにちは"
+	encoder := japanese.ShiftJIS.NewEncoder()
+	shiftJISBytes, err := encoder.Bytes([]byte(text))
+	if err != nil {
+		t.Fatalf("Failed to encode: %v", err)
+	}
+
+	txtFile := filepath.Join(tmpDir, "test.txt")
+	if err := os.WriteFile(txtFile, shiftJISBytes, 0644); err != nil {
+		t.Fatalf("Failed to create file: %v", err)
+	}
+
+	// Create encoding map for .txt files
+	encodingMap, err := encoding.ParseEncodingMap("txt:shift_jis")
+	if err != nil {
+		t.Fatalf("Failed to parse encoding map: %v", err)
+	}
+
+	var buf bytes.Buffer
+	formatter := NewFormatterWithEncodingMap(&buf, encodingMap)
+
+	root := &tree.Node{
+		Name:     "",
+		IsDir:    true,
+		Children: []*tree.Node{{Name: "test.txt", Path: "test.txt", IsDir: false}},
+	}
+
+	entries := []scanner.FileEntry{
+		{Path: txtFile, RelPath: "test.txt", IsDir: false},
+	}
+
+	err = formatter.Format(root, entries)
+	if err != nil {
+		t.Fatalf("Format failed: %v", err)
+	}
+
+	result := buf.String()
+	if !strings.Contains(result, text) {
+		t.Errorf("Expected UTF-8 content %q in output", text)
+	}
+}
+
+func TestFormatter_WithEncodingMap_MultipleExtensions(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create Shift_JIS .txt file
+	text1 := "こんにちは"
+	encoder1 := japanese.ShiftJIS.NewEncoder()
+	shiftJISBytes, _ := encoder1.Bytes([]byte(text1))
+	txtFile := filepath.Join(tmpDir, "test.txt")
+	os.WriteFile(txtFile, shiftJISBytes, 0644)
+
+	// Create EUC-JP .log file
+	text2 := "ログファイル"
+	encoder2 := japanese.EUCJP.NewEncoder()
+	eucJPBytes, _ := encoder2.Bytes([]byte(text2))
+	logFile := filepath.Join(tmpDir, "test.log")
+	os.WriteFile(logFile, eucJPBytes, 0644)
+
+	// Create encoding map
+	encodingMap, _ := encoding.ParseEncodingMap("txt:shift_jis,log:euc-jp")
+
+	var buf bytes.Buffer
+	formatter := NewFormatterWithEncodingMap(&buf, encodingMap)
+
+	root := &tree.Node{
+		Name:  "",
+		IsDir: true,
+		Children: []*tree.Node{
+			{Name: "test.txt", Path: "test.txt", IsDir: false},
+			{Name: "test.log", Path: "test.log", IsDir: false},
+		},
+	}
+
+	entries := []scanner.FileEntry{
+		{Path: txtFile, RelPath: "test.txt", IsDir: false},
+		{Path: logFile, RelPath: "test.log", IsDir: false},
+	}
+
+	err := formatter.Format(root, entries)
+	if err != nil {
+		t.Fatalf("Format failed: %v", err)
+	}
+
+	result := buf.String()
+	if !strings.Contains(result, text1) {
+		t.Errorf("Expected UTF-8 content %q for .txt file", text1)
+	}
+	if !strings.Contains(result, text2) {
+		t.Errorf("Expected UTF-8 content %q for .log file", text2)
+	}
+}
+
+func TestFormatter_WithEncodingMap_UnmappedExtension(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create UTF-8 .md file (not in encoding map)
+	mdContent := "# Markdown File"
+	mdFile := filepath.Join(tmpDir, "test.md")
+	os.WriteFile(mdFile, []byte(mdContent), 0644)
+
+	// Create encoding map (only for .txt)
+	encodingMap, _ := encoding.ParseEncodingMap("txt:shift_jis")
+
+	var buf bytes.Buffer
+	formatter := NewFormatterWithEncodingMap(&buf, encodingMap)
+
+	root := &tree.Node{
+		Name:     "",
+		IsDir:    true,
+		Children: []*tree.Node{{Name: "test.md", Path: "test.md", IsDir: false}},
+	}
+
+	entries := []scanner.FileEntry{
+		{Path: mdFile, RelPath: "test.md", IsDir: false},
+	}
+
+	err := formatter.Format(root, entries)
+	if err != nil {
+		t.Fatalf("Format failed: %v", err)
+	}
+
+	result := buf.String()
+	if !strings.Contains(result, mdContent) {
+		t.Errorf("Expected content %q for unmapped .md file", mdContent)
+	}
+}
+
+func TestFormatter_WithEncodingMap_NoExtension(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create file without extension
+	content := "No extension file"
+	noExtFile := filepath.Join(tmpDir, "README")
+	os.WriteFile(noExtFile, []byte(content), 0644)
+
+	encodingMap, _ := encoding.ParseEncodingMap("txt:shift_jis")
+
+	var buf bytes.Buffer
+	formatter := NewFormatterWithEncodingMap(&buf, encodingMap)
+
+	root := &tree.Node{
+		Name:     "",
+		IsDir:    true,
+		Children: []*tree.Node{{Name: "README", Path: "README", IsDir: false}},
+	}
+
+	entries := []scanner.FileEntry{
+		{Path: noExtFile, RelPath: "README", IsDir: false},
+	}
+
+	err := formatter.Format(root, entries)
+	if err != nil {
+		t.Fatalf("Format failed: %v", err)
+	}
+
+	result := buf.String()
+	if !strings.Contains(result, content) {
+		t.Errorf("Expected content %q for file without extension", content)
+	}
+}
+
+func TestFormatter_BOMRemoval(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create file with BOM
+	contentWithBOM := []byte{0xEF, 0xBB, 0xBF, 'h', 'e', 'l', 'l', 'o'}
+	bomFile := filepath.Join(tmpDir, "bom.txt")
+	os.WriteFile(bomFile, contentWithBOM, 0644)
+
+	var buf bytes.Buffer
+	formatter := NewFormatter(&buf)
+
+	root := &tree.Node{
+		Name:     "",
+		IsDir:    true,
+		Children: []*tree.Node{{Name: "bom.txt", Path: "bom.txt", IsDir: false}},
+	}
+
+	entries := []scanner.FileEntry{
+		{Path: bomFile, RelPath: "bom.txt", IsDir: false},
+	}
+
+	err := formatter.Format(root, entries)
+	if err != nil {
+		t.Fatalf("Format failed: %v", err)
+	}
+
+	result := buf.String()
+	// BOM should be removed, content should be "hello"
+	if !strings.Contains(result, "hello") {
+		t.Error("Expected 'hello' in output")
+	}
+	// BOM should not be present
+	if strings.Contains(result, "\ufeff") {
+		t.Error("BOM should be removed from output")
+	}
+}
+
+func TestFormatter_NewlineNormalization(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create file with mixed line endings
+	contentMixed := []byte("line1\r\nline2\rline3\nline4")
+	mixedFile := filepath.Join(tmpDir, "mixed.txt")
+	os.WriteFile(mixedFile, contentMixed, 0644)
+
+	var buf bytes.Buffer
+	formatter := NewFormatter(&buf)
+
+	root := &tree.Node{
+		Name:     "",
+		IsDir:    true,
+		Children: []*tree.Node{{Name: "mixed.txt", Path: "mixed.txt", IsDir: false}},
+	}
+
+	entries := []scanner.FileEntry{
+		{Path: mixedFile, RelPath: "mixed.txt", IsDir: false},
+	}
+
+	err := formatter.Format(root, entries)
+	if err != nil {
+		t.Fatalf("Format failed: %v", err)
+	}
+
+	result := buf.String()
+	// All line endings should be normalized to LF
+	expectedLines := "line1\nline2\nline3\nline4"
+	if !strings.Contains(result, expectedLines) {
+		t.Errorf("Expected normalized line endings, got: %q", result)
+	}
+	// Should not contain CRLF or CR
+	if strings.Contains(result, "\r\n") || strings.Contains(result, "\r") {
+		t.Error("Found non-normalized line endings (CRLF or CR)")
+	}
+}
+
+func TestFormatter_BOMAndNewlines(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create file with BOM and mixed line endings
+	contentBOMMixed := []byte{0xEF, 0xBB, 0xBF}
+	contentBOMMixed = append(contentBOMMixed, []byte("line1\r\nline2\r")...)
+	bomMixedFile := filepath.Join(tmpDir, "bom_mixed.txt")
+	os.WriteFile(bomMixedFile, contentBOMMixed, 0644)
+
+	var buf bytes.Buffer
+	formatter := NewFormatter(&buf)
+
+	root := &tree.Node{
+		Name:     "",
+		IsDir:    true,
+		Children: []*tree.Node{{Name: "bom_mixed.txt", Path: "bom_mixed.txt", IsDir: false}},
+	}
+
+	entries := []scanner.FileEntry{
+		{Path: bomMixedFile, RelPath: "bom_mixed.txt", IsDir: false},
+	}
+
+	err := formatter.Format(root, entries)
+	if err != nil {
+		t.Fatalf("Format failed: %v", err)
+	}
+
+	result := buf.String()
+	// BOM removed and newlines normalized
+	expectedLines := "line1\nline2"
+	if !strings.Contains(result, expectedLines) {
+		t.Errorf("Expected BOM removed and normalized line endings, got: %q", result)
+	}
+	if strings.Contains(result, "\ufeff") {
+		t.Error("BOM should be removed")
+	}
+	if strings.Contains(result, "\r") {
+		t.Error("CR characters should be normalized to LF")
+	}
+}

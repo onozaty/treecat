@@ -187,8 +187,8 @@ treecat . --include "**/*.go,**/*.md"
 treecat . --no-gitignore
 ```
 
-#### `--encoding <encoding-name>`
-入力ファイルのエンコーディングを指定し、UTF-8に変換して出力
+#### `--encoding-map <extension:encoding,...>`
+ファイル拡張子ごとに異なるエンコーディングを指定し、UTF-8に変換して出力
 
 サポートされるエンコーディング（IANA標準）:
 - **日本語**: `shift_jis`, `euc-jp`, `iso-2022-jp`
@@ -200,20 +200,26 @@ treecat . --no-gitignore
 エンコーディング名は大文字小文字を区別せず、アンダースコアとハイフンも同じ扱い
 （例: `Shift_JIS`, `shift-jis`, `SHIFT_JIS` はすべて同じ）
 
+拡張子はドット無し、大文字小文字を区別しない
+（例: `txt`, `TXT`, `.txt` はすべて同じ）
+
 ```bash
-# Shift_JISで書かれたファイルをUTF-8で出力
-treecat . --encoding shift_jis
+# .txtファイルのみShift_JISで読み込み
+treecat . --encoding-map "txt:shift_jis"
 
-# EUC-JPファイルの変換
-treecat legacy_code/ --encoding euc-jp > output.txt
+# 複数の拡張子に異なるエンコーディングを指定
+treecat legacy_code/ --encoding-map "txt:shift_jis,log:euc-jp,md:utf-8" > output.txt
 
-# Windows-1252エンコードされたファイルを処理
-treecat docs/ --encoding windows-1252
+# Windows-1252エンコードされた.txtと.csvファイルを処理
+treecat docs/ --encoding-map "txt:windows-1252,csv:windows-1252"
 ```
 
 **動作**:
-- オプション未指定時: バイナリとして読み込み、そのまま出力（既存の動作）
-- `--encoding` 指定時: 指定エンコーディングで読み込み、UTF-8に変換して出力
+- すべてのファイルに対して:
+  - BOM (Byte Order Mark) を除去
+  - 改行コードをLF (`\n`) に統一（CRLF、CRも変換）
+- エンコーディングマップに指定された拡張子のファイル: 指定エンコーディングで読み込み、UTF-8に変換
+- マップに指定されていないファイル: そのまま出力（UTF-8として扱う）
 - 未対応エンコーディング指定時: エラーメッセージを表示して終了
 
 ### 使用例
