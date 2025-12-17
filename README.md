@@ -23,27 +23,7 @@ Perfect for feeding entire project structures to AI assistants, code reviews, do
 
 ## Installation
 
-### Download Binary (Recommended)
-
-Download the latest binary from [GitHub Releases](https://github.com/onozaty/treecat/releases).
-
-**macOS/Linux:**
-```bash
-# Download and extract (replace VERSION with actual version like v1.0.0)
-curl -L https://github.com/onozaty/treecat/releases/download/vVERSION/treecat_VERSION_OS_ARCH.tar.gz | tar xz
-sudo mv treecat /usr/local/bin/
-```
-
-**Windows:**
-Download the `.zip` file from the releases page and extract `treecat.exe` to a directory in your PATH.
-
-### Using go install
-
-If you have Go installed (1.24 or later):
-
-```bash
-go install github.com/onozaty/treecat/cmd/treecat@latest
-```
+Download the latest binary from [GitHub Releases](https://github.com/onozaty/treecat/releases/latest).
 
 ## Quick Start
 
