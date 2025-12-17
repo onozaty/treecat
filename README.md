@@ -1,5 +1,10 @@
 # treecat
 
+[![GitHub license](https://img.shields.io/github/license/onozaty/treecat)](https://github.com/onozaty/treecat/blob/main/LICENSE)
+[![Test](https://github.com/onozaty/treecat/actions/workflows/test.yaml/badge.svg)](https://github.com/onozaty/treecat/actions/workflows/test.yaml)
+[![codecov](https://codecov.io/gh/onozaty/treecat/graph/badge.svg?token=V114XLWDBR)](https://codecov.io/gh/onozaty/treecat)
+
+
 > Combine multiple files into a single output with directory tree visualization, optimized for LLM consumption
 
 **treecat** is a command-line tool that aggregates multiple files from a directory into a single output, displaying a directory tree structure at the top followed by the contents of each file. It's specifically designed to provide comprehensive codebase context to Large Language Models (LLMs) like Claude Code, ChatGPT, and GitHub Copilot.
