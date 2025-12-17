@@ -62,8 +62,11 @@ func (f *Formatter) Format(treeRoot *tree.Node, entries []scanner.FileEntry) err
 			continue
 		}
 
+		// Normalize path separators to forward slashes for consistent output across platforms
+		normalizedPath := filepath.ToSlash(entry.RelPath)
+
 		// Write file separator with relative path
-		separator := fmt.Sprintf("=== %s ===\n", entry.RelPath)
+		separator := fmt.Sprintf("=== %s ===\n", normalizedPath)
 		if _, err := f.writer.Write([]byte(separator)); err != nil {
 			return fmt.Errorf("failed to write file separator: %w", err)
 		}
