@@ -4,6 +4,8 @@
 [![Test](https://github.com/onozaty/treecat/actions/workflows/test.yaml/badge.svg)](https://github.com/onozaty/treecat/actions/workflows/test.yaml)
 [![codecov](https://codecov.io/gh/onozaty/treecat/graph/badge.svg?token=V114XLWDBR)](https://codecov.io/gh/onozaty/treecat)
 
+English | [日本語](README.ja.md)
+
 
 > Combine multiple files into a single output with directory tree visualization, optimized for LLM consumption
 
