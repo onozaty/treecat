@@ -15,6 +15,7 @@ Perfect for feeding entire project structures to AI assistants, code reviews, do
 
 ## Features
 
+- **Single binary with no dependencies** - Download and run, no installation required
 - **Directory tree visualization with file content aggregation** - Single output combining tree structure and file contents
 - **Optimized for LLM context** - Ideal for Claude Code, ChatGPT, GitHub Copilot, and other AI coding assistants
 - **Automatic .gitignore pattern application** - Respects your project's .gitignore rules by default
