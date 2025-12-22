@@ -673,3 +673,96 @@ func TestIntegration_NoEncodingFlag(t *testing.T) {
 		t.Errorf("Expected content %q in output", content)
 	}
 }
+
+func TestIntegration_OutputToFile(t *testing.T) {
+	// Create temporary test directory
+	tmpDir := t.TempDir()
+
+	// Create test files
+	file1 := filepath.Join(tmpDir, "file1.txt")
+	file2 := filepath.Join(tmpDir, "file2.txt")
+	if err := os.WriteFile(file1, []byte("Content 1"), 0644); err != nil {
+		t.Fatalf("Failed to create file1: %v", err)
+	}
+	if err := os.WriteFile(file2, []byte("Content 2"), 0644); err != nil {
+		t.Fatalf("Failed to create file2: %v", err)
+	}
+
+	// Create output file path
+	outputFile := filepath.Join(tmpDir, "output.txt")
+
+	// Run command with --output flag
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{tmpDir, "--output", outputFile})
+	err := cmd.Execute()
+
+	if err != nil {
+		t.Fatalf("Command failed: %v", err)
+	}
+
+	// Read output file
+	outputContent, err := os.ReadFile(outputFile)
+	if err != nil {
+		t.Fatalf("Failed to read output file: %v", err)
+	}
+	output := string(outputContent)
+
+	expectedTree := `├── file1.txt
+└── file2.txt
+
+=== file1.txt ===
+Content 1
+=== file2.txt ===
+Content 2
+`
+
+	// Expected output should include tmpDir as first line
+	expected := tmpDir + "\n" + expectedTree
+
+	if output != expected {
+		t.Errorf("Output mismatch.\nExpected:\n%s\n\nGot:\n%s", expected, output)
+	}
+
+	// Verify the output file contains expected content
+	if !strings.Contains(output, "Content 1") || !strings.Contains(output, "Content 2") {
+		t.Error("Output file does not contain all expected content")
+	}
+}
+
+func TestIntegration_OutputToFileShortFlag(t *testing.T) {
+	// Create temporary test directory
+	tmpDir := t.TempDir()
+
+	// Create test file
+	testFile := filepath.Join(tmpDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Create output file path
+	outputFile := filepath.Join(tmpDir, "result.txt")
+
+	// Run command with -o short flag
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{tmpDir, "-o", outputFile})
+	err := cmd.Execute()
+
+	if err != nil {
+		t.Fatalf("Command failed: %v", err)
+	}
+
+	// Verify output file was created
+	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+		t.Fatal("Output file was not created")
+	}
+
+	// Read and verify content
+	outputContent, err := os.ReadFile(outputFile)
+	if err != nil {
+		t.Fatalf("Failed to read output file: %v", err)
+	}
+
+	if !strings.Contains(string(outputContent), "test content") {
+		t.Error("Output file does not contain expected content")
+	}
+}

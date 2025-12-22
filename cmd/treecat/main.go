@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -39,6 +40,7 @@ Perfect for providing codebase context to LLMs.`,
 	cmd.Flags().StringSliceP("include", "i", []string{}, "Include patterns (comma-separated glob patterns)")
 	cmd.Flags().Bool("no-gitignore", false, "Ignore .gitignore file")
 	cmd.Flags().String("encoding-map", "", "Per-extension encoding map (e.g., txt:shift_jis,log:euc-jp)")
+	cmd.Flags().StringP("output", "o", "", "Output file (write to file instead of stdout)")
 
 	return cmd
 }
@@ -51,6 +53,7 @@ func run(cmd *cobra.Command, args []string) error {
 	includePatterns, _ := cmd.Flags().GetStringSlice("include")
 	noGitignore, _ := cmd.Flags().GetBool("no-gitignore")
 	encodingMapStr, _ := cmd.Flags().GetString("encoding-map")
+	outputPath, _ := cmd.Flags().GetString("output")
 
 	// Get target directory (default to current directory)
 	targetDir := "."
@@ -106,8 +109,22 @@ func run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse encoding map: %w", err)
 	}
 
+	// Determine writer (stdout or file)
+	var writer io.Writer = os.Stdout
+	var outputFile *os.File
+
+	if outputPath != "" {
+		var err error
+		outputFile, err = os.Create(outputPath)
+		if err != nil {
+			return fmt.Errorf("failed to create output file: %w", err)
+		}
+		defer outputFile.Close()
+		writer = outputFile
+	}
+
 	// Create formatter and output
-	formatter := output.NewFormatterWithEncodingMap(os.Stdout, encodingMap)
+	formatter := output.NewFormatterWithEncodingMap(writer, encodingMap)
 	if err := formatter.Format(treeRoot, entries); err != nil {
 		return fmt.Errorf("failed to format output: %w", err)
 	}

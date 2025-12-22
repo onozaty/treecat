@@ -162,6 +162,9 @@ treecat /path/to/project
 
 # 標準出力をファイルにリダイレクト
 treecat /path/to/project > output.txt
+
+# ファイルに直接出力
+treecat /path/to/project --output output.txt
 ```
 
 ### オプション
@@ -186,6 +189,16 @@ treecat . --include "**/*.go,**/*.md"
 ```bash
 treecat . --no-gitignore
 ```
+
+#### `--output <file>` / `-o <file>`
+標準出力ではなく、指定したファイルに出力
+
+```bash
+treecat . --output result.txt
+treecat . -o result.txt
+```
+
+**用途**: PowerShellなどでリダイレクトを使用するとエンコーディングの問題が発生する場合に使用
 
 #### `--encoding-map <extension:encoding,...>`
 ファイル拡張子ごとに異なるエンコーディングを指定し、UTF-8に変換して出力

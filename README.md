@@ -32,16 +32,16 @@ Download the latest binary from [GitHub Releases](https://github.com/onozaty/tre
 
 ```bash
 # Output current directory to file
-treecat . > output.txt
+treecat . --output output.txt
 
 # Output specific directory
-treecat /path/to/project > output.txt
+treecat /path/to/project --output output.txt
 
 # Filter by file patterns
-treecat . --include "**/*.go,**/*.md" > output.txt
+treecat . --include "**/*.go,**/*.md" --output output.txt
 
 # Exclude patterns
-treecat . --exclude "*.png,*.jpg,node_modules/**" > output.txt
+treecat . --exclude "*.png,*.jpg,node_modules/**" --output output.txt
 ```
 
 ## Usage
@@ -80,6 +80,16 @@ Ignore `.gitignore` file patterns. By default, treecat automatically applies `.g
 
 ```bash
 treecat . --no-gitignore
+```
+
+#### Output Options
+
+**`-o, --output <file>`**
+
+Write output to a file instead of stdout. This is useful when shell redirection causes encoding issues (e.g., in PowerShell).
+
+```bash
+treecat . --output output.txt
 ```
 
 #### Encoding Options
