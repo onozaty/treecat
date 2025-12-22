@@ -32,16 +32,16 @@ AIアシスタントへのプロジェクト構造全体の提供、コードレ
 
 ```bash
 # 現在のディレクトリをファイルに出力
-treecat . > output.txt
+treecat . --output output.txt
 
 # 特定のディレクトリを出力
-treecat /path/to/project > output.txt
+treecat /path/to/project --output output.txt
 
 # ファイルパターンでフィルタリング
-treecat . --include "**/*.go,**/*.md" > output.txt
+treecat . --include "**/*.go,**/*.md" --output output.txt
 
 # パターンで除外
-treecat . --exclude "*.png,*.jpg,node_modules/**" > output.txt
+treecat . --exclude "*.png,*.jpg,node_modules/**" --output output.txt
 ```
 
 ## 使用方法
@@ -80,6 +80,16 @@ treecat . --exclude "*.log,*.tmp,dist/**"
 
 ```bash
 treecat . --no-gitignore
+```
+
+#### 出力オプション
+
+**`-o, --output <file>`**
+
+標準出力ではなくファイルに出力します。シェルのリダイレクトでエンコーディングの問題が発生する場合(PowerShellなど)に便利です。
+
+```bash
+treecat . --output output.txt
 ```
 
 #### エンコーディングオプション
