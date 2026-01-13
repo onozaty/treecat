@@ -36,3 +36,23 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
+homebrew_casks:
+  - name: treecat
+    repository:
+      owner: onozaty
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    description: "Combine multiple files into a single output with directory tree visualization, optimized for LLM consumption"
+    homepage: "https://github.com/onozaty/treecat"
+    license: MIT
+    skip_upload: auto
+scoops:
+  - name: treecat
+    repository:
+      owner: onozaty
+      name: scoop-bucket
+      token: "{{ .Env.SCOOP_BUCKET_TOKEN }}"
+    description: "Combine multiple files into a single output with directory tree visualization, optimized for LLM consumption"
+    homepage: "https://github.com/onozaty/treecat"
+    license: MIT
+    skip_upload: auto
