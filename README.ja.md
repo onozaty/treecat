@@ -26,6 +26,21 @@ AIアシスタントへのプロジェクト構造全体の提供、コードレ
 
 ## インストール
 
+### Homebrew (macOS/Linux)
+
+```bash
+brew install onozaty/tap/treecat
+```
+
+### Scoop (Windows)
+
+```bash
+scoop bucket add onozaty https://github.com/onozaty/scoop-bucket
+scoop install treecat
+```
+
+### バイナリダウンロード
+
 最新のバイナリを[GitHub Releases](https://github.com/onozaty/treecat/releases/latest)からダウンロードしてください。
 
 ## クイックスタート
